@@ -1,13 +1,13 @@
 const pick = require("../util/pick"),
-  fetch = require("node-fetch"),
   shouldCompress = require("../util/shouldCompress"),
   compress = require("../util/compress"),
   DEFAULT_QUALITY = 40;
+
 exports.handler = async (e, t) => {
   let { url: r } = e.queryStringParameters,
     { jpeg: s, bw: o, l: a } = e.queryStringParameters;
   if (!r)
-    return { statusCode: 200, body: "Bandwidth Hero Data Compression Service" };
+    return { statusCode: 200, body: "bandwidth-hero-proxy" };
   try {
     r = JSON.parse(r);
   } catch {}
@@ -17,24 +17,26 @@ exports.handler = async (e, t) => {
     n = 0 != o,
     i = parseInt(a, 10) || 40;
   try {
-    let h = {},
-      { data: c, type: l } = await fetch(r, {
+    let h = {}, c, l;
+    let fetchResponse = await fetch(r, {
         headers: {
           ...pick(e.headers, ["cookie", "dnt", "referer"]),
           "user-agent": "Bandwidth-Hero Compressor",
           "x-forwarded-for": e.headers["x-forwarded-for"] || e.ip,
           via: "1.1 bandwidth-hero",
         },
-      }).then(async (e) =>
-        e.ok
-          ? ((h = e.headers),
-            {
-              data: await e.buffer(),
-              type: e.headers.get("content-type") || "",
-            })
-          : { statusCode: e.status || 302 },
-      ),
-      p = c.length;
+      });
+
+      if (!fetchResponse.ok) {
+        return { statusCode: fetchResponse.status || 302 };
+      }
+      h = fetchResponse.headers;
+      const arrayBuffer = await fetchResponse.arrayBuffer();
+      c = Buffer.from(arrayBuffer);
+      l = fetchResponse.headers.get("content-type") || "";
+
+      let p = c.length;
+	  
     if (!shouldCompress(l, p, d))
       return (
         console.log("Bypassing... Size: ", c.length),
